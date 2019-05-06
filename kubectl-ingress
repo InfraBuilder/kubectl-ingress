@@ -117,11 +117,11 @@ function upsert {
     #   -a key=value
     elif match "^(--annotate|-a)=.*=.*$" $arg; then
       a=${arg#*=}
-      ANNOTATIONS+=("${a#*=}: ${a%=*}")
+      ANNOTATIONS+=("${a%=*}: ${a#*=}")
     
     elif match "^(--annotate|-a)$" $arg; then
       shift
-      ANNOTATIONS+=("${1#*=}: ${1%=*}")
+      ANNOTATIONS+=("${1%=*}: ${1#*=}")
     
     #--[ Cert Manager: Cluster Issuer ]--------------------
     # Format :
