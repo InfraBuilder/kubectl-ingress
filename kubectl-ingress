@@ -1,0 +1,273 @@
+#!/bin/bash
+
+
+
+function list {
+  kubectl get ingress $@
+}
+
+function edit {
+  kubectl edit ingress $@
+}
+
+function match {
+  grep -E "$1" <<<$2 >/dev/null 2>/dev/null
+}
+
+function usage {
+  BINNAME=$(basename $0)
+  PLUGIN=${BINNAME#*-}
+  METHOD=${1:-create}
+  
+  echo "Usage: kubectl $PLUGIN (list|edit|create|apply) {name}"
+}
+function upsert_usage {
+  BINNAME=$(basename $0)
+  PLUGIN=${BINNAME#*-}
+  METHOD=${1:-create}
+  
+  echo "Usage: kubectl $PLUGIN $METHOD [opts] {name} --url=hostname/uri=service:port [--url=...]"
+  echo
+  echo 'Option list :'
+  echo '  -a, --annotate=key=value'
+  echo '  -ci, --cluster-issuer=name (Will enable tls, and tell cert-manager cluster issuer "name" to generate certificates)'
+  echo '  -i, --issuer=name (Will enable tls, and tell cert-manager issuer "name" to generate certificates)'
+  echo '  -t, --tls (Will activate tls using a secret named "{hostname}-tls" for each hostname)'
+  echo '  -t, --tls (Will activate tls using a secret named "{hostname}-tls")'
+  echo '  -u, --url=hostname/path=service:port (Path is optionnal)'
+  echo 
+  echo 'Examples:'
+  echo 
+  echo '  Create an ingress rule "web" routing "example.com" to service "web" on port 80'
+  echo '    kubectl '$PLUGIN' '$METHOD' web --url=example.com=web:80'
+  echo 
+  echo '  Create same ingress with short flags :'
+  echo '    kubectl '$PLUGIN' '$METHOD' web -u example.com=web:80'
+  echo 
+  echo '  TLS activation :'
+  echo '    kubectl '$PLUGIN' '$METHOD' web-tls -u example.com=web:80 --tls'
+  echo 
+  echo '  Ingress rule "sites" with multiple url rules and uri routing:'
+  echo '    kubectl '$PLUGIN' '$METHOD' sites -u example.com=web:80 -u api.example.com/api/v1=myapp:8080'
+  echo 
+  echo '  With custom annotation:'
+  echo '    kubectl '$PLUGIN' '$METHOD' example -u example.com=web:80 -a nginx.ingress.kubernetes.io/rewrite-target=/'
+  echo 
+  echo '  Using cert-manager (automatically enable --tls):'
+  echo '    kubectl '$PLUGIN' '$METHOD' mysite -u example.com=web:80 --cluster-issuer=letsencrypt'
+}
+
+function upsert {
+  
+  METHOD=$1
+  shift
+  
+  # Retrieving ingress name to create
+  NAME=$1
+  shift
+  
+  # If no name is given, then show usage
+  [ "$NAME" = "" ] && upsert_usage $METHOD && exit 1
+  
+  # List of URL
+  RULE_LIST=()
+  
+  # Annotations to add to ingress
+  ANNOTATIONS=()
+  
+  # TLS flag
+  TLS=false
+  
+  # Arguments passthrough to kubectl
+  ARGS=()
+  
+  #==[ Argument parsing ]======================================================
+  
+  # Walking through arguments
+  while [ "$1" != "" ]
+  do 
+    # Current argument is $1, will "shift" at the end of the loop
+    arg=$1
+    
+    #--[ Help ]--------------------------------------------
+    if match "^(--help|-h)$" $arg; then
+      upsert_usage $METHOD && exit
+    
+    #--[ Rule ]--------------------------------------------
+    # Format :
+    #   --url=hostname/path=service:port
+    #   --url hostname/path=service:port
+    #   -u=hostname/path=service:port
+    #   -u hostname/path=service:port
+    elif match "^(--url|-u)=.*=.*:.*$" $arg; then
+      RULE_LIST+=${arg#*=}
+    
+    elif match "^(--url|-u)$" $arg; then
+      shift
+      RULE_LIST+=($1)
+    
+    #--[ Annotation ]--------------------------------------
+    # Format :
+    #   --annotation=key=value
+    #   --annotation key=value
+    #   -a=key=value
+    #   -a key=value
+    elif match "^(--annotate|-a)=.*=.*$" $arg; then
+      a=${arg#*=}
+      ANNOTATIONS+=("${a#*=}: ${a%=*}")
+    
+    elif match "^(--annotate|-a)$" $arg; then
+      shift
+      ANNOTATIONS+=("${1#*=}: ${1%=*}")
+    
+    #--[ Cert Manager: Cluster Issuer ]--------------------
+    # Format :
+    #   --cluster-issuer=name
+    #   --cluster-issuer name
+    #   -ci=name
+    #   -ci name
+    elif match "^(--cluster-issuer|-ci)=.*$" $arg; then
+      TLS=true
+      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
+    
+    elif match "^(--cluster-issuer|-ci)$" $arg; then
+      TLS=true
+      shift
+      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: $1")
+    
+    #--[ Cert Manager: Issuer ]----------------------------
+    #   --issuer=name
+    #   --issuer name
+    #   -i=name
+    #   -i name
+    elif match "^(--issuer|-i)=.*$" $arg; then
+      TLS=true
+      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
+    
+    elif match "^(--issuer|-i)$" $arg; then
+      TLS=true
+      shift
+      ANNOTATIONS+=("certmanager.k8s.io/issuer: $1")
+    
+    #--[ TLS ]---------------------------------------------
+    # Format :
+    #   --tls
+    #   -t
+    elif match "^(--tls|-t)$" $arg; then
+      TLS=true
+  
+    #--[ Kubectl arguments passthrough ]-------------------
+    # This allows user to pass standard arguments like --namespace, --dry-run, ...
+    else
+      echo $arg >&2 
+      ARGS+=($arg)
+    
+    fi
+    
+    # Going on next arg
+    shift
+  done
+  
+  #==[ Sanity checks ]==========================================================
+  if [ ${#RULE_LIST[@]} -eq 0 ]
+  then
+    echo "Error: at least one rule (--url or -u) must be defined"
+    echo
+    upsert_usage $METHOD && exit 1
+  fi
+  
+  [ "$METHOD" = "create" ] && ARGS+=("--save-config")
+  
+  #==[ Generating Yaml ]========================================================
+  (
+    echo "apiVersion: extensions/v1beta1"
+    echo "kind: Ingress"
+    echo "metadata:"
+    echo "  name: $NAME"
+    
+    #--[ Annotations ]-------------------------------------
+    if [ "${#ANNOTATIONS[@]}" -gt 0 ]
+    then
+      echo "  annotations:"
+      for i in $(seq 0 $(( ${#ANNOTATIONS[@]} - 1 )) )
+      do
+        echo "    ${ANNOTATIONS[$i]}"
+      done
+    fi
+    echo "spec:"
+    echo "  rules:"
+    
+    #--[ Rules ]-------------------------------------------
+    TLS_HOSTNAME_LIST=()
+    for RULE in ${RULE_LIST[@]}
+    do
+      # Format : hostname/path=service:port
+      
+      # URL is "hostname/path", left part of the "=" 
+      URL=${RULE%=*}
+      
+      # Endpoint is "service:port", right part of the "="
+      ENDPOINT=${RULE#*=}
+      
+      # Hostname is the $URL without uri (/*) suffix
+      HOSTNAME=${URL%%/*}
+      TLS_HOSTNAME_LIST+=($HOSTNAME)
+      
+      # Path is made of URL, without the hostname and first / prefix
+      PATH=${URL:${#HOSTNAME} + 1}
+      
+      # Service name is the left part of the endpoint with ":" separator
+      SVC_NAME=${ENDPOINT%:*}
+      
+      # Service port is the right part of the endpoint with ":" separator
+      SVC_PORT=${ENDPOINT#*:}
+      
+      echo "  - host: $HOSTNAME"
+      echo "    http:"
+      echo "      paths:"
+      echo "      - path: /$PATH"
+      echo "        backend:"
+      echo "          serviceName: $SVC_NAME"
+      echo "          servicePort: $SVC_PORT"
+    done
+    #--[ TLS ]---------------------------------------------
+    if [ "$TLS" = "true" ]
+    then
+      echo "  tls:"
+      for i in ${TLS_HOSTNAME_LIST[@]}
+      do
+        echo "  - hosts:"
+        echo "    - $i"
+        echo "    secretName: $i-tls"
+      done
+    fi
+    
+    #--[ Yaml end ]----------------------------------------
+  )| kubectl $METHOD ${ARGS[@]} -f - 
+  
+}
+
+
+#==[ Entrypoint ]==============================================================
+
+VERB=$1
+shift
+
+case $VERB in
+  list)
+    list $@
+    ;;
+  edit)
+    edit $@
+    ;;
+  apply)
+    upsert apply $@
+    ;;
+  create)
+    upsert create $@
+    ;;
+    
+  *)
+    usage
+    ;;
+esac
