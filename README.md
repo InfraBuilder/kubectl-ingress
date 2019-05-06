@@ -11,7 +11,7 @@ This plugin is made of a simple bash script : [kubectl-ingress](kubectl-ingress)
 
 One line installation :
 ```bash
-curl https://kubectl-ingress.infrabuilder.com/kubectl-ingress | sudo tee /usr/local/bin/kubectl-ingress && sudo chmod +x kubectl-ingress
+curl https://kubectl-ingress.infrabuilder.com/kubectl-ingress | sudo tee /usr/local/bin/kubectl-ingress && sudo chmod +x /usr/local/bin/kubectl-ingress
 ```
 
 # General usage
