@@ -31,8 +31,8 @@ function upsert_usage {
   echo 'Option list :'
   echo '  -a, --annotate=key=value'
   echo '  -ci, --cluster-issuer=name (Will enable tls, and tell cert-manager cluster issuer "name" to generate certificates)'
+  echo '  -h, --help (display this message)'
   echo '  -i, --issuer=name (Will enable tls, and tell cert-manager issuer "name" to generate certificates)'
-  echo '  -t, --tls (Will activate tls using a secret named "{hostname}-tls" for each hostname)'
   echo '  -t, --tls (Will activate tls using a secret named "{hostname}-tls")'
   echo '  -u, --url=hostname/path=service:port (Path is optionnal)'
   echo 
