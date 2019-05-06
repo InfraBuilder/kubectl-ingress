@@ -1,6 +1,9 @@
 #!/bin/bash
-
-
+###################################################################
+# @Description : Kubectl plugin for ingress management                                                                                 
+# @Author      : Alexis Ducastel <alexis@infrabuilder.com>
+# @License     : MIT
+###################################################################
 
 function list {
   kubectl get ingress $@
