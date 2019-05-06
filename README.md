@@ -68,9 +68,9 @@ Usage: `kubectl ingress create [opts] {name} --url=hostname/uri=service:port [--
 Option list :
 -  `-a`, `--annotate=key=value`
 -  `-ci`, `--cluster-issuer=name` Will enable tls, and tell cert-manager cluster issuer "name" to generate certificates
+-  `-h`, `--help` Display this message
 -  `-i`, `--issuer=name` Will enable tls, and tell cert-manager issuer "name" to generate certificates
 -  `-t`, `--tls` Will activate tls using a secret named "{hostname}-tls" for each hostname
--  `-t`, `--tls` Will activate tls using a secret named "{hostname}-tls"
 -  `-u`, `--url=hostname/path=service:port` Path is optionnal
 
 # Examples:
