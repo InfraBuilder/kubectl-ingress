@@ -7,7 +7,12 @@ You need `kubectl` and `bash`
 
 # Installation
 
-This plugin is made of a simple bash script. To install this plugin, it just have to be available in your PATH.
+This plugin is made of a simple bash script : [kubectl-ingress](kubectl-ingress) . To install this plugin, it just have to be available in your PATH.
+
+One line installation :
+```bash
+curl https://kubectl-ingress.infrabuilder.com/kubectl-ingress | sudo tee /usr/local/bin/kubectl-ingress && sudo chmod +x kubectl-ingress
+```
 
 # General usage
 
