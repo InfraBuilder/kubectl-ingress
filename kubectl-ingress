@@ -162,7 +162,6 @@ function upsert {
     #--[ Kubectl arguments passthrough ]-------------------
     # This allows user to pass standard arguments like --namespace, --dry-run, ...
     else
-      echo $arg >&2 
       ARGS+=($arg)
     
     fi
