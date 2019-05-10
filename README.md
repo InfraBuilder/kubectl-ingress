@@ -3,7 +3,9 @@ Kubectl plugin for ingress management for linux/mac
 
 # Requirement
 
-You need `kubectl` and `bash`
+You need `kubectl`, `grep` and `bash`.
+
+For `--cluster-issuer` and `--issuer` flags, you must setup [cert-manager](https://docs.cert-manager.io/en/latest/getting-started/index.html) and create a `ClusterIssuer` or an `Issuer`.
 
 # Installation
 
@@ -36,7 +38,7 @@ To create or update an ingress :
 kubectl ingress apply --help
 ```
 
-# Standard kubectl parameters
+# Standard kubectl parameters passthrough
 
 All arguments taht are non specific to this plugin are given to kubectl
 command so that you can use `--namespace`, `--context`, `--dry-run`, `-o yaml`, 
@@ -63,7 +65,7 @@ kubectl ingress apply web --url=example.com=web:80
 ```
 
 
-# Create/apply usage
+# kubectl ingress create/apply usage
 
 Create and apply usage is exactly the same, just the behavior changes.
 Following usage is for `create`, and is the output of `kubectl ingress create -h`.
