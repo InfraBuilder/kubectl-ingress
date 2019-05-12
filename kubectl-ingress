@@ -5,6 +5,10 @@
 # @License     : MIT
 ###################################################################
 
+function version {
+  echo "v1.0.1"
+}
+
 function list {
   kubectl get ingress $@
 }
@@ -22,7 +26,7 @@ function usage {
   PLUGIN=${BINNAME#*-}
   METHOD=${1:-create}
   
-  echo "Usage: kubectl $PLUGIN (list|edit|create|apply) {name}"
+  echo "Usage: kubectl $PLUGIN (list|edit|create|apply|version)"
 }
 function upsert_usage {
   BINNAME=$(basename $0)
@@ -33,6 +37,7 @@ function upsert_usage {
   echo
   echo 'Option list :'
   echo '  -a, --annotate=key=value'
+  echo '  -c, --class=name (Select the ingress controller that will implement this ingress rule)'
   echo '  -ci, --cluster-issuer=name (Will enable tls, and tell cert-manager cluster issuer "name" to generate certificates)'
   echo '  -h, --help (display this message)'
   echo '  -i, --issuer=name (Will enable tls, and tell cert-manager issuer "name" to generate certificates)'
@@ -58,6 +63,9 @@ function upsert_usage {
   echo 
   echo '  Using cert-manager (automatically enable --tls):'
   echo '    kubectl '$PLUGIN' '$METHOD' mysite -u example.com=web:80 --cluster-issuer=letsencrypt'
+  echo
+  echo '  Simple ingress with custom ingress class "external" :'
+  echo '    kubectl ingress create api -u api.example.com=api:8080 --class external'
 }
 
 function upsert {
@@ -77,6 +85,9 @@ function upsert {
   
   # Annotations to add to ingress
   ANNOTATIONS=()
+  
+  # Ingress class (empty is default)
+  CLASS=""
   
   # TLS flag
   TLS=false
@@ -122,6 +133,19 @@ function upsert {
     elif match "^(--annotate|-a)$" $arg; then
       shift
       ANNOTATIONS+=("${1%=*}: ${1#*=}")
+      
+    #--[ Ingress class ]-----------------------------------
+    # Format :
+    #   --class=value
+    #   --class value
+    #   -c=value
+    #   -c value
+    elif match "^(--class|-c)=.*$" $arg; then
+      CLASS="${arg#*=}"
+    
+    elif match "^(--class|-c)$" $arg; then
+      shift
+      CLASS="$1"
     
     #--[ Cert Manager: Cluster Issuer ]--------------------
     # Format :
@@ -169,6 +193,8 @@ function upsert {
     # Going on next arg
     shift
   done
+  
+  [ "$CLASS" != "" ] && ANNOTATIONS+=("kubernetes.io/ingress.class: \"$CLASS\"")
   
   #==[ Sanity checks ]==========================================================
   if [ ${#RULE_LIST[@]} -eq 0 ]
@@ -256,6 +282,9 @@ VERB=$1
 shift
 
 case $VERB in
+  version)
+    version
+    ;;
   list)
     list $@
     ;;

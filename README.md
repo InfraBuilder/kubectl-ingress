@@ -3,7 +3,7 @@ Kubectl plugin for ingress management for linux/mac
 
 # Requirement
 
-You need `kubectl`, `grep` and `bash`.
+You need `kubectl`, `grep` and `bash` to run this plugin.
 
 For `--cluster-issuer` and `--issuer` flags, you must setup [cert-manager](https://docs.cert-manager.io/en/latest/getting-started/index.html) and create a `ClusterIssuer` or an `Issuer`.
 
@@ -11,7 +11,7 @@ For `--cluster-issuer` and `--issuer` flags, you must setup [cert-manager](https
 
 This plugin is made of a simple bash script : [kubectl-ingress](kubectl-ingress) . To install this plugin, it just have to be available in your PATH.
 
-One line installation :
+One line installation/upgrade :
 ```bash
 curl https://kubectl-ingress.infrabuilder.com/kubectl-ingress | sudo tee /usr/local/bin/kubectl-ingress && sudo chmod +x /usr/local/bin/kubectl-ingress
 ```
@@ -36,6 +36,11 @@ kubectl ingress create --help
 To create or update an ingress :
 ```bash
 kubectl ingress apply --help
+```
+
+To display version
+```bash
+kubectl ingress version
 ```
 
 # Standard kubectl parameters passthrough
@@ -110,4 +115,9 @@ kubectl ingress create example -u example.com=web:80 -a nginx.ingress.kubernetes
 Using cert-manager (automatically enable --tls):
 ```bash
 kubectl ingress create mysite -u example.com=web:80 --cluster-issuer=letsencrypt
+```
+
+Simple ingress with custom ingress class "external" :
+```bash
+kubectl ingress create api -u api.example.com=api:8080 --class external
 ```
