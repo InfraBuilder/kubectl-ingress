@@ -156,11 +156,13 @@ function upsert {
     elif match "^(--cluster-issuer|-ci)=.*$" $arg; then
       TLS=true
       ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
+      ANNOTATIONS+=("cert-manager.io/cluster-issuer: ${arg#*=}")
     
     elif match "^(--cluster-issuer|-ci)$" $arg; then
       TLS=true
       shift
       ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: $1")
+      ANNOTATIONS+=("cert-manager.io/cluster-issuer: $1")
     
     #--[ Cert Manager: Issuer ]----------------------------
     #   --issuer=name
@@ -170,11 +172,13 @@ function upsert {
     elif match "^(--issuer|-i)=.*$" $arg; then
       TLS=true
       ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
+      ANNOTATIONS+=("cert-manager.io/cluster-issuer: ${arg#*=}")
     
     elif match "^(--issuer|-i)$" $arg; then
       TLS=true
       shift
       ANNOTATIONS+=("certmanager.k8s.io/issuer: $1")
+      ANNOTATIONS+=("cert-manager.io/issuer: $1")
     
     #--[ TLS ]---------------------------------------------
     # Format :
