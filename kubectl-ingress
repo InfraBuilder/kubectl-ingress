@@ -6,7 +6,7 @@
 ###################################################################
 
 function version {
-  echo "v1.0.1"
+  echo "v1.1.0"
 }
 
 function list {
@@ -86,6 +86,9 @@ function upsert {
   # Annotations to add to ingress
   ANNOTATIONS=()
   
+  # pathType is Prefix by default
+  PATHTYPE="Prefix"
+
   # Ingress class (empty is default)
   CLASS=""
   
@@ -134,6 +137,19 @@ function upsert {
       shift
       ANNOTATIONS+=("${1%=*}: ${1#*=}")
       
+    #--[ Ingress pathType ]-----------------------------------
+    # Format :
+    #   --pathType=value
+    #   --pathType value
+    #   -pt=value
+    #   -pt value
+    elif match "^(--pathType|-pt)=.*$" $arg; then
+      PATHTYPE="${arg#*=}"
+    
+    elif match "^(--pathType|-pt)$" $arg; then
+      shift
+      PATHTYPE="$1"
+
     #--[ Ingress class ]-----------------------------------
     # Format :
     #   --class=value
@@ -155,13 +171,11 @@ function upsert {
     #   -ci name
     elif match "^(--cluster-issuer|-ci)=.*$" $arg; then
       TLS=true
-      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
       ANNOTATIONS+=("cert-manager.io/cluster-issuer: ${arg#*=}")
     
     elif match "^(--cluster-issuer|-ci)$" $arg; then
       TLS=true
       shift
-      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: $1")
       ANNOTATIONS+=("cert-manager.io/cluster-issuer: $1")
     
     #--[ Cert Manager: Issuer ]----------------------------
@@ -171,13 +185,11 @@ function upsert {
     #   -i name
     elif match "^(--issuer|-i)=.*$" $arg; then
       TLS=true
-      ANNOTATIONS+=("certmanager.k8s.io/cluster-issuer: ${arg#*=}")
       ANNOTATIONS+=("cert-manager.io/cluster-issuer: ${arg#*=}")
     
     elif match "^(--issuer|-i)$" $arg; then
       TLS=true
       shift
-      ANNOTATIONS+=("certmanager.k8s.io/issuer: $1")
       ANNOTATIONS+=("cert-manager.io/issuer: $1")
     
     #--[ TLS ]---------------------------------------------
@@ -212,7 +224,7 @@ function upsert {
   
   #==[ Generating Yaml ]========================================================
   (
-    echo "apiVersion: extensions/v1beta1"
+    echo "apiVersion: networking.k8s.io/v1"
     echo "kind: Ingress"
     echo "metadata:"
     echo "  name: $NAME"
@@ -227,6 +239,7 @@ function upsert {
       done
     fi
     echo "spec:"
+    [ "$CLASS" != "" ] && echo "  ingressClassName: $CLASS"
     echo "  rules:"
     
     #--[ Rules ]-------------------------------------------
@@ -258,9 +271,18 @@ function upsert {
       echo "    http:"
       echo "      paths:"
       echo "      - path: /$PATH"
+      echo "        pathType: $PATHTYPE"
       echo "        backend:"
-      echo "          serviceName: $SVC_NAME"
-      echo "          servicePort: $SVC_PORT"
+      echo "          service:"
+      echo "            name: $SVC_NAME"
+      echo "            port:"
+      re='^[0-9]+$'
+      if [[ $SVC_PORT =~ $re ]]
+      then
+        echo "              number: $SVC_PORT"
+      else
+        echo "              name: \"$SVC_PORT\""
+      fi
     done
     #--[ TLS ]---------------------------------------------
     if [ "$TLS" = "true" ]
