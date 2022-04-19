@@ -1,4 +1,15 @@
+# ⛔️ Deprecated ⛔️
+
+This project is now deprecated and archived as the official cli "[kubectl](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands)" does implement ingress creation/modification natively without the need of a plugin.
+
+See : https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#-em-ingress-em-
+
+---
+
 # kubectl-ingress
+
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
 Kubectl plugin for ingress management for linux/mac
 
 # Requirement
